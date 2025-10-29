@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>사이트 A - 작가 전용</title>
+    <title>Project: A</title>
     <style>
         * {
             margin: 0;
@@ -48,9 +48,42 @@
                 transform: scale(1);
             }
         }
+        
+        /* 관람객 수 표시 */
+        .viewer-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 16px;
+            z-index: 1000;
+        }
+        
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        
+        .status-indicator.connected {
+            background: rgba(0, 200, 0, 0.7);
+        }
     </style>
 </head>
 <body>
+    <div class="status-indicator" id="status">서버 연결중...</div>
+    <div class="viewer-counter" id="viewerCount">관람객: 0명</div>
     <div class="video-container">
         <video id="videoElement" autoplay playsinline></video>
     </div>
@@ -74,6 +107,8 @@
             
             ws.onopen = function() {
                 console.log('WebSocket 연결됨');
+                document.getElementById('status').textContent = '✅ 서버 연결됨';
+                document.getElementById('status').className = 'status-indicator connected';
                 
                 // 작가로 등록
                 ws.send(JSON.stringify({
@@ -95,10 +130,14 @@
             
             ws.onerror = function(error) {
                 console.error('WebSocket 에러:', error);
+                document.getElementById('status').textContent = '❌ 연결 오류';
+                document.getElementById('status').className = 'status-indicator';
             };
             
             ws.onclose = function() {
                 console.log('WebSocket 연결 종료');
+                document.getElementById('status').textContent = '⚠️ 연결 끊김';
+                document.getElementById('status').className = 'status-indicator';
                 
                 // 5초 후 재연결 시도
                 setTimeout(connectWebSocket, 5000);
@@ -107,6 +146,7 @@
         
         // 관람객 수 업데이트
         function updateViewerCount(count) {
+            document.getElementById('viewerCount').textContent = `관람객: ${count}명`;
             console.log(`현재 관람객: ${count}명`);
         }
         
@@ -148,8 +188,8 @@
             const y = Math.random() * (containerRect.height - size);
             
             // 어두운 검정 계열만 생성 (0~80 범위의 어두운 그레이스케일)
-            const grayValue = Math.floor(Math.random() * 81); // 0(블랙) ~ 80(어두운 그레이)
-            const opacity = Math.random() * 0.3 + 0.6; // 0.6 ~ 0.9 투명도
+            const grayValue = Math.floor(Math.random() * 100); // 0(블랙) ~ 80(어두운 그레이)
+            const opacity = Math.random() * 0.1 + 2; // 0.6 ~ 0.9 투명도
             const color = `rgba(${grayValue}, ${grayValue}, ${grayValue}, ${opacity})`;
             
             // 스퀘어 엘리먼트 생성
