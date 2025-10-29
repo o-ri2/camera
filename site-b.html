@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>사이트 B - 관람객</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: manipulation;
+        }
+        
+        .square-button {
+            width: 100px;
+            height: 100px;
+            background: #000;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .square-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .square-button:active {
+            transform: scale(0.95);
+        }
+        
+        .square-button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        /* 연결 상태 표시 (작게) */
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 12px;
+            background: rgba(255, 0, 0, 0.1);
+            color: #999;
+        }
+        
+        .connection-status.connected {
+            background: rgba(0, 200, 0, 0.1);
+            color: #0c0;
+        }
+    </style>
+</head>
+<body>
+    <button class="square-button" id="heartButton" onclick="sendButtonClick('button1')" disabled>♥</button>
+    <div class="connection-status" id="status">연결중...</div>
+
+    <script>
+        let ws = null;
+        const button = document.getElementById('heartButton');
+        const statusDiv = document.getElementById('status');
+        
+        // WebSocket URL 자동 감지
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}`;
+        
+        console.log('WebSocket URL:', wsUrl);
+        
+        // WebSocket 연결 설정
+        function connectWebSocket() {
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket 연결됨');
+                
+                // 관람객으로 등록
+                ws.send(JSON.stringify({
+                    type: 'register',
+                    role: 'viewer'
+                }));
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('받은 메시지:', data);
+                
+                if (data.type === 'error') {
+                    alert(data.message);
+                    button.disabled = true;
+                    statusDiv.textContent = '인원 초과';
+                    statusDiv.className = 'connection-status';
+                } else if (data.type === 'camera_status') {
+                    console.log('카메라 상태:', data.status);
+                    
+                    // 연결 성공 - 버튼 활성화
+                    button.disabled = false;
+                    statusDiv.textContent = '연결됨';
+                    statusDiv.className = 'connection-status connected';
+                }
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket 에러:', error);
+                button.disabled = true;
+                statusDiv.textContent = '연결 오류';
+                statusDiv.className = 'connection-status';
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket 연결 종료');
+                button.disabled = true;
+                statusDiv.textContent = '연결 끊김';
+                statusDiv.className = 'connection-status';
+                
+                // 5초 후 재연결 시도
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+        
+        // 버튼 클릭 전송
+        function sendButtonClick(buttonName) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'button_click',
+                    button: buttonName,
+                    timestamp: Date.now()
+                }));
+                
+                console.log(`버튼 클릭: ${buttonName}`);
+            } else {
+                console.log('서버와 연결되지 않았습니다!');
+            }
+        }
+        
+        // 페이지 로드 시 WebSocket 연결
+        window.addEventListener('load', function() {
+            connectWebSocket();
+        });
+        
+        // 페이지 언로드 시 정리
+        window.addEventListener('beforeunload', function() {
+            if (ws) {
+                ws.close();
+            }
+        });
+    </script>
+</body>
+</html>

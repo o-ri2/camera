@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사이트 A - 작가 전용</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            overflow: hidden;
+        }
+        
+        .video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+        
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .mosaic-square {
+            position: absolute;
+            animation: fadeIn 0.3s ease-in;
+            pointer-events: none;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* 관람객 수 표시 */
+        .viewer-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 16px;
+            z-index: 1000;
+        }
+        
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        
+        .status-indicator.connected {
+            background: rgba(0, 200, 0, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="status-indicator" id="status">서버 연결중...</div>
+    <div class="viewer-counter" id="viewerCount">👥 관람객: 0명</div>
+    <div class="video-container">
+        <video id="videoElement" autoplay playsinline></video>
+    </div>
+
+    <script>
+        let video = document.getElementById('videoElement');
+        let stream = null;
+        let ws = null;
+        let mosaicSquares = [];
+        
+        // WebSocket URL 자동 감지
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}`;
+        
+        console.log('WebSocket URL:', wsUrl);
+        
+        // WebSocket 연결 설정
+        function connectWebSocket() {
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket 연결됨');
+                document.getElementById('status').textContent = '✅ 서버 연결됨';
+                document.getElementById('status').className = 'status-indicator connected';
+                
+                // 작가로 등록
+                ws.send(JSON.stringify({
+                    type: 'register',
+                    role: 'artist'
+                }));
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('받은 메시지:', data);
+                
+                if (data.type === 'button_click') {
+                    handleButtonClick(data.button);
+                } else if (data.type === 'viewer_count') {
+                    updateViewerCount(data.count);
+                }
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket 에러:', error);
+                document.getElementById('status').textContent = '❌ 연결 오류';
+                document.getElementById('status').className = 'status-indicator';
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket 연결 종료');
+                document.getElementById('status').textContent = '⚠️ 연결 끊김';
+                document.getElementById('status').className = 'status-indicator';
+                
+                // 5초 후 재연결 시도
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+        
+        // 관람객 수 업데이트
+        function updateViewerCount(count) {
+            document.getElementById('viewerCount').textContent = `👥 관람객: ${count}명`;
+            console.log(`현재 관람객: ${count}명`);
+        }
+        
+        // 카메라 시작
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }, 
+                    audio: false 
+                });
+                
+                video.srcObject = stream;
+                console.log('카메라 시작됨');
+                
+                // 서버에 카메라 시작 알림
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'camera_status',
+                        status: 'started'
+                    }));
+                }
+            } catch (error) {
+                console.error('카메라 접근 오류:', error);
+                alert('카메라 접근 실패: ' + error.message);
+            }
+        }
+        
+        // 모자이크 스퀘어 생성 (어두운 검정 계열만)
+        function createMosaicSquare() {
+            const videoContainer = document.querySelector('.video-container');
+            const containerRect = videoContainer.getBoundingClientRect();
+            
+            // 더 작은 랜덤 크기 설정
+            const size = Math.random() * 30 + 15; // 15px ~ 45px
+            const x = Math.random() * (containerRect.width - size);
+            const y = Math.random() * (containerRect.height - size);
+            
+            // 어두운 검정 계열만 생성 (0~80 범위의 어두운 그레이스케일)
+            const grayValue = Math.floor(Math.random() * 81); // 0(블랙) ~ 80(어두운 그레이)
+            const opacity = Math.random() * 0.3 + 0.6; // 0.6 ~ 0.9 투명도
+            const color = `rgba(${grayValue}, ${grayValue}, ${grayValue}, ${opacity})`;
+            
+            // 스퀘어 엘리먼트 생성
+            const square = document.createElement('div');
+            square.className = 'mosaic-square';
+            square.style.width = size + 'px';
+            square.style.height = size + 'px';
+            square.style.left = x + 'px';
+            square.style.top = y + 'px';
+            square.style.background = color;
+            
+            // 비디오 컨테이너에 추가
+            videoContainer.appendChild(square);
+            mosaicSquares.push(square);
+            
+            console.log(`모자이크 스퀘어 생성! (총 ${mosaicSquares.length}개)`);
+        }
+        
+        // 모든 모자이크 스퀘어 제거
+        function clearAllMosaicSquares() {
+            mosaicSquares.forEach(square => {
+                square.style.animation = 'fadeIn 0.3s ease-out reverse';
+                setTimeout(() => {
+                    if (square.parentNode) {
+                        square.parentNode.removeChild(square);
+                    }
+                }, 300);
+            });
+            
+            mosaicSquares = [];
+            console.log('모든 모자이크 스퀘어 제거됨');
+        }
+        
+        // 여러 개의 모자이크 스퀘어 연속 생성
+        function createMultipleMosaicSquares(count) {
+            let created = 0;
+            const interval = setInterval(() => {
+                if (created < count) {
+                    createMosaicSquare();
+                    created++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 200);
+        }
+        
+        // 버튼 클릭 처리
+        function handleButtonClick(buttonName) {
+            switch(buttonName) {
+                case 'button1':
+                    createMosaicSquare();
+                    break;
+                case 'button2':
+                    createMultipleMosaicSquares(5);
+                    break;
+                case 'button3':
+                    clearAllMosaicSquares();
+                    break;
+            }
+        }
+        
+        // 페이지 로드 시 WebSocket 연결 및 카메라 자동 시작
+        window.addEventListener('load', function() {
+            connectWebSocket();
+            startCamera();
+        });
+        
+        // 페이지 언로드 시 정리
+        window.addEventListener('beforeunload', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            if (ws) {
+                ws.close();
+            }
+        });
+    </script>
+</body>
+</html>

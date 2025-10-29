@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전시 작품 - 접속 페이지</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .access-button {
+            padding: 20px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: block;
+            color: white;
+        }
+        
+        .access-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .artist-button {
+            background: #667eea;
+        }
+        
+        .viewer-button {
+            background: #48bb78;
+        }
+        
+        .info {
+            margin-top: 40px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+            text-align: left;
+        }
+        
+        .info h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .info ul {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.8;
+            list-style-position: inside;
+        }
+        
+        .warning {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 5px;
+            text-align: left;
+            font-size: 14px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 인터랙티브 전시 작품</h1>
+        <p class="subtitle">카메라와 관람객의 상호작용</p>
+        
+        <div class="button-group">
+            <a href="/site-a.html" class="access-button artist-button">
+                🎥 작가 전용 (A사이트)
+            </a>
+            
+            <a href="/site-b.html" class="access-button viewer-button">
+                👥 관람객 입장 (B사이트)
+            </a>
+        </div>
+        
+        <div class="info">
+            <h3>📋 사용 방법</h3>
+            <ul>
+                <li><strong>작가:</strong> A사이트에서 카메라 화면을 관리합니다</li>
+                <li><strong>관람객:</strong> B사이트에서 ♥ 버튼을 눌러 참여합니다</li>
+                <li><strong>효과:</strong> 버튼을 누르면 카메라 화면에 검정 스퀘어가 생성됩니다</li>
+                <li><strong>인원:</strong> 최대 50명의 관람객이 동시 참여 가능</li>
+            </ul>
+        </div>
+        
+        <div class="warning">
+            ⚠️ <strong>작가 전용 페이지</strong>는 작품 운영자만 접속해야 합니다.<br>
+            관람객은 <strong>관람객 입장</strong> 버튼을 눌러주세요.
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "dual-site-communication",
+  "version": "1.0.0",
+  "description": "카메라 사이트와 컨트롤 사이트를 연동하는 WebSocket 서버",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "websocket",
+    "camera",
+    "real-time"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2"
+  }
+}
