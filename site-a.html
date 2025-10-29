@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project: A</title>
+    <title>사이트 A - 작가 전용</title>
     <style>
         * {
             margin: 0;
@@ -48,42 +48,9 @@
                 transform: scale(1);
             }
         }
-        
-        /* 관람객 수 표시 */
-        .viewer-counter {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 16px;
-            z-index: 1000;
-        }
-        
-        .status-indicator {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 14px;
-            z-index: 1000;
-        }
-        
-        .status-indicator.connected {
-            background: rgba(0, 200, 0, 0.7);
-        }
     </style>
 </head>
 <body>
-    <div class="status-indicator" id="status">서버 연결중...</div>
-    <div class="viewer-counter" id="viewerCount">관람객: 0명</div>
     <div class="video-container">
         <video id="videoElement" autoplay playsinline></video>
     </div>
@@ -107,8 +74,6 @@
             
             ws.onopen = function() {
                 console.log('WebSocket 연결됨');
-                document.getElementById('status').textContent = '✅ 서버 연결됨';
-                document.getElementById('status').className = 'status-indicator connected';
                 
                 // 작가로 등록
                 ws.send(JSON.stringify({
@@ -130,14 +95,10 @@
             
             ws.onerror = function(error) {
                 console.error('WebSocket 에러:', error);
-                document.getElementById('status').textContent = '❌ 연결 오류';
-                document.getElementById('status').className = 'status-indicator';
             };
             
             ws.onclose = function() {
                 console.log('WebSocket 연결 종료');
-                document.getElementById('status').textContent = '⚠️ 연결 끊김';
-                document.getElementById('status').className = 'status-indicator';
                 
                 // 5초 후 재연결 시도
                 setTimeout(connectWebSocket, 5000);
@@ -146,7 +107,6 @@
         
         // 관람객 수 업데이트
         function updateViewerCount(count) {
-            document.getElementById('viewerCount').textContent = `관람객: ${count}명`;
             console.log(`현재 관람객: ${count}명`);
         }
         
@@ -177,35 +137,41 @@
             }
         }
         
-        // 모자이크 스퀘어 생성 (어두운 검정 계열만)
+        // 모자이크 스퀘어 생성 (그리드에 맞춰 작은 검정 픽셀)
         function createMosaicSquare() {
             const videoContainer = document.querySelector('.video-container');
             const containerRect = videoContainer.getBoundingClientRect();
             
-            // 더 작은 랜덤 크기 설정
-            const size = Math.random() * 30 + 15; // 15px ~ 45px
-            const x = Math.random() * (containerRect.width - size);
-            const y = Math.random() * (containerRect.height - size);
+            // 고정 픽셀 크기
+            const size = 3; // 3px 검정 픽셀
             
-            // 어두운 검정 계열만 생성 (0~80 범위의 어두운 그레이스케일)
-            const grayValue = Math.floor(Math.random() * 100); // 0(블랙) ~ 80(어두운 그레이)
-            const opacity = Math.random() * 0.1 + 2; // 0.6 ~ 0.9 투명도
-            const color = `rgba(${grayValue}, ${grayValue}, ${grayValue}, ${opacity})`;
+            // 그리드 간격 (10px 단위로 그리드 생성)
+            const gridSize = 10;
+            
+            // 그리드에 맞춰서 랜덤 위치 선택
+            const gridColumnsCount = Math.floor(containerRect.width / gridSize);
+            const gridRowsCount = Math.floor(containerRect.height / gridSize);
+            
+            const gridX = Math.floor(Math.random() * gridColumnsCount) * gridSize;
+            const gridY = Math.floor(Math.random() * gridRowsCount) * gridSize;
+            
+            // 완전 검정색 (불투명도 없음)
+            const color = 'rgb(0, 0, 0)';
             
             // 스퀘어 엘리먼트 생성
             const square = document.createElement('div');
             square.className = 'mosaic-square';
             square.style.width = size + 'px';
             square.style.height = size + 'px';
-            square.style.left = x + 'px';
-            square.style.top = y + 'px';
+            square.style.left = gridX + 'px';
+            square.style.top = gridY + 'px';
             square.style.background = color;
             
             // 비디오 컨테이너에 추가
             videoContainer.appendChild(square);
             mosaicSquares.push(square);
             
-            console.log(`모자이크 스퀘어 생성! (총 ${mosaicSquares.length}개)`);
+            console.log(`검정 픽셀 생성! 위치: (${gridX}, ${gridY}) / 총 ${mosaicSquares.length}개`);
         }
         
         // 모든 모자이크 스퀘어 제거
