@@ -99,6 +99,11 @@
                     type: 'register',
                     role: 'viewer'
                 }));
+                
+                // 즉시 버튼 활성화
+                button.disabled = false;
+                statusDiv.textContent = '연결됨';
+                statusDiv.className = 'connection-status connected';
             };
             
             ws.onmessage = function(event) {
