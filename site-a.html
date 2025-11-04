@@ -65,6 +65,60 @@
             }
         }
         
+        /* 픽셀 하이라이트 효과 */
+        .pixel-highlight {
+            position: absolute;
+            pointer-events: none;
+            z-index: 100;
+            animation: highlightPulse 1s ease-out forwards;
+        }
+        
+        @keyframes highlightPulse {
+            0% {
+                box-shadow: 0 0 20px 5px rgba(255, 255, 255, 1),
+                            0 0 40px 10px rgba(255, 59, 92, 0.8);
+                transform: scale(1.5);
+                opacity: 1;
+            }
+            50% {
+                box-shadow: 0 0 30px 10px rgba(255, 255, 255, 0.8),
+                            0 0 60px 20px rgba(255, 59, 92, 0.6);
+                transform: scale(2);
+                opacity: 0.8;
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0),
+                            0 0 0 0 rgba(255, 59, 92, 0);
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+        
+        /* 섬광 효과 */
+        .flash-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 50;
+            animation: flashAnimation 0.3s ease-out;
+        }
+        
+        @keyframes flashAnimation {
+            0% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+        
         /* 하트 카운터 스타일 */
         .heart-counter {
             position: fixed;
@@ -230,6 +284,36 @@
             console.log(`현재 관람객: ${count}명`);
         }
         
+        // 섬광 효과 생성
+        function createFlashEffect() {
+            const flash = document.createElement('div');
+            flash.className = 'flash-effect';
+            document.body.appendChild(flash);
+            
+            setTimeout(() => {
+                flash.remove();
+            }, 300);
+        }
+        
+        // 픽셀 하이라이트 효과 생성
+        function createPixelHighlight(x, y, size) {
+            const highlight = document.createElement('div');
+            highlight.className = 'pixel-highlight';
+            highlight.style.left = x + 'px';
+            highlight.style.top = y + 'px';
+            highlight.style.width = size + 'px';
+            highlight.style.height = size + 'px';
+            highlight.style.border = '2px solid rgba(255, 255, 255, 0.8)';
+            highlight.style.borderRadius = '50%';
+            
+            const imageWrapper = document.querySelector('.image-wrapper');
+            imageWrapper.appendChild(highlight);
+            
+            setTimeout(() => {
+                highlight.remove();
+            }, 1000);
+        }
+        
         // 2.png의 랜덤 픽셀 하나를 드러내기
         function revealPixel() {
             if (!imageLoaded) {
@@ -268,6 +352,10 @@
                 sourceX, sourceY, pixelSize, pixelSize,  // 소스 이미지 영역
                 sourceX, sourceY, pixelSize, pixelSize   // 캔버스에 그릴 위치와 크기
             );
+            
+            // 시각적 효과 추가
+            createFlashEffect();
+            createPixelHighlight(sourceX, sourceY, pixelSize);
             
             console.log(`픽셀 드러남! 위치: (${x}, ${y}) / 총 ${revealedPixels.size}/${totalPixels}개`);
         }
