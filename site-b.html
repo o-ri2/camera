@@ -69,7 +69,7 @@
     </style>
 </head>
 <body>
-    <button class="square-button" id="heartButton" onclick="sendButtonClick('button1')" disabled>♥</button>
+    <button class="square-button" id="heartButton" disabled>♥</button>
 
     <script>
         let ws = null;
@@ -127,19 +127,22 @@
         
         // WebSocket 연결 설정
         function connectWebSocket() {
+            console.log('🔌 WebSocket 연결 시도:', wsUrl);
             ws = new WebSocket(wsUrl);
             
             ws.onopen = function() {
-                console.log('WebSocket 연결됨');
+                console.log('✅ WebSocket 연결 성공!');
                 
                 // 관람객으로 등록
                 ws.send(JSON.stringify({
                     type: 'register',
                     role: 'viewer'
                 }));
+                console.log('📤 관람객 등록 메시지 전송');
                 
                 // 즉시 버튼 활성화
                 button.disabled = false;
+                console.log('🟢 버튼 활성화됨');
             };
             
             ws.onmessage = function(event) {
@@ -173,11 +176,17 @@
         
         // 버튼 클릭 전송
         function sendButtonClick(buttonName) {
+            console.log('sendButtonClick 호출됨:', buttonName);
+            
             // 애니메이션 재생
             playAnimation();
             
             // 비프음 재생
-            playBeep();
+            try {
+                playBeep();
+            } catch (error) {
+                console.error('비프음 재생 실패:', error);
+            }
             
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
@@ -186,24 +195,40 @@
                     timestamp: Date.now()
                 }));
                 
-                console.log(`버튼 클릭: ${buttonName}`);
+                console.log(`✅ 버튼 클릭 전송 성공: ${buttonName}`);
             } else {
-                console.log('서버와 연결되지 않았습니다!');
+                console.error('❌ 서버와 연결되지 않았습니다! WebSocket 상태:', ws ? ws.readyState : 'null');
             }
         }
         
-        // 터치 이벤트 처리 (모바일 지원)
+        // 터치 디바이스 감지 플래그
+        let isTouchDevice = false;
+        
+        // 터치 시작 시 눌림 효과
         button.addEventListener('touchstart', function(e) {
             if (!button.disabled) {
-                e.preventDefault(); // 기본 동작 방지
+                isTouchDevice = true;
+                e.preventDefault();
                 button.style.transform = 'scale(0.95)';
+                console.log('🖐️ 터치 시작');
             }
-        });
+        }, { passive: false });
         
+        // 터치 종료 시 버튼 클릭 실행
         button.addEventListener('touchend', function(e) {
             if (!button.disabled) {
-                e.preventDefault(); // 기본 동작 방지
+                e.preventDefault();
                 button.style.transform = 'scale(1)';
+                console.log('🖐️ 터치 종료 - 버튼 클릭 실행');
+                sendButtonClick('button1');
+            }
+        }, { passive: false });
+        
+        // 클릭 이벤트 처리 (PC 브라우저 - 터치 디바이스가 아닐 때만)
+        button.addEventListener('click', function(e) {
+            if (!button.disabled && !isTouchDevice) {
+                console.log('🖱️ 클릭 이벤트 발생');
+                sendButtonClick('button1');
             }
         });
         
@@ -221,3 +246,4 @@
     </script>
 </body>
 </html>
+
