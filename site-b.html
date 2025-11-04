@@ -27,7 +27,6 @@
             background: #000;
             border: none;
             cursor: pointer;
-            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -43,13 +42,29 @@
             transform: scale(1.05);
         }
         
-        .square-button:active {
-            transform: scale(0.95);
-        }
-        
         .square-button:disabled {
             opacity: 0.3;
             cursor: not-allowed;
+        }
+        
+        /* 버튼 클릭 애니메이션 */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+            }
+            50% {
+                transform: scale(0.9);
+                box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+            }
+        }
+        
+        .square-button.animate {
+            animation: pulse 0.4s ease-out;
         }
     </style>
 </head>
@@ -59,6 +74,49 @@
     <script>
         let ws = null;
         const button = document.getElementById('heartButton');
+        let audioContext = null;
+        
+        // AudioContext 초기화 (사용자 인터랙션 후)
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        // 낮은 비프음 재생
+        function playBeep() {
+            initAudio();
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // 낮은 주파수 (200Hz)
+            oscillator.frequency.value = 200;
+            oscillator.type = 'sine';
+            
+            // 볼륨 설정 (페이드 아웃)
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+        
+        // 버튼 애니메이션 재생
+        function playAnimation() {
+            button.classList.remove('animate');
+            // 리플로우를 강제하여 애니메이션 재시작
+            void button.offsetWidth;
+            button.classList.add('animate');
+            
+            // 애니메이션 종료 후 클래스 제거
+            setTimeout(() => {
+                button.classList.remove('animate');
+            }, 400);
+        }
         
         // WebSocket URL 자동 감지
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -115,6 +173,12 @@
         
         // 버튼 클릭 전송
         function sendButtonClick(buttonName) {
+            // 애니메이션 재생
+            playAnimation();
+            
+            // 비프음 재생
+            playBeep();
+            
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: 'button_click',
@@ -127,6 +191,21 @@
                 console.log('서버와 연결되지 않았습니다!');
             }
         }
+        
+        // 터치 이벤트 처리 (모바일 지원)
+        button.addEventListener('touchstart', function(e) {
+            if (!button.disabled) {
+                e.preventDefault(); // 기본 동작 방지
+                button.style.transform = 'scale(0.95)';
+            }
+        });
+        
+        button.addEventListener('touchend', function(e) {
+            if (!button.disabled) {
+                e.preventDefault(); // 기본 동작 방지
+                button.style.transform = 'scale(1)';
+            }
+        });
         
         // 페이지 로드 시 WebSocket 연결
         window.addEventListener('load', function() {

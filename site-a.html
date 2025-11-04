@@ -16,23 +16,39 @@
             overflow: hidden;
         }
         
-        .video-container {
+        .image-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
             background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        #videoElement {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        .image-wrapper {
+            position: relative;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        #baseImage {
             display: block;
+            max-width: 100vw;
+            max-height: 100vh;
+            object-fit: contain;
         }
         
-        .mosaic-square {
+        #pixelCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        
+        .pixel {
             position: absolute;
             animation: fadeIn 0.3s ease-in;
             pointer-events: none;
@@ -48,18 +64,122 @@
                 transform: scale(1);
             }
         }
+        
+        /* 하트 카운터 스타일 */
+        .heart-counter {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .heart-icon {
+            font-size: 24px;
+            color: #ff3b5c;
+            animation: heartBeat 1s ease-in-out infinite;
+        }
+        
+        .heart-count {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            min-width: 30px;
+            text-align: center;
+        }
+        
+        @keyframes heartBeat {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+        
+        /* 카운터 증가 애니메이션 */
+        .heart-counter.pulse {
+            animation: counterPulse 0.3s ease-out;
+        }
+        
+        @keyframes counterPulse {
+            0% {
+                transform: translateX(-50%) scale(1);
+            }
+            50% {
+                transform: translateX(-50%) scale(1.15);
+            }
+            100% {
+                transform: translateX(-50%) scale(1);
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="video-container">
-        <video id="videoElement" autoplay playsinline></video>
+    <div class="image-container">
+        <div class="image-wrapper">
+            <img id="baseImage" src="image/1.png" alt="Base Image">
+            <canvas id="pixelCanvas"></canvas>
+        </div>
+    </div>
+    
+    <!-- 하트 카운터 -->
+    <div class="heart-counter">
+        <span class="heart-icon">♥</span>
+        <span class="heart-count" id="heartCount">0</span>
     </div>
 
     <script>
-        let video = document.getElementById('videoElement');
-        let stream = null;
         let ws = null;
-        let mosaicSquares = [];
+        let heartCount = 0;
+        
+        const baseImage = document.getElementById('baseImage');
+        const canvas = document.getElementById('pixelCanvas');
+        const ctx = canvas.getContext('2d');
+        const heartCountElement = document.getElementById('heartCount');
+        const heartCounterContainer = document.querySelector('.heart-counter');
+        
+        let secondImage = new Image();
+        let imageLoaded = false;
+        let revealedPixels = new Set(); // 이미 드러난 픽셀 위치 저장
+        
+        // 2.png 로드
+        secondImage.src = 'image/2.png';
+        secondImage.onload = function() {
+            imageLoaded = true;
+            console.log('2.png 로드 완료');
+        };
+        
+        // 1.png 로드 완료 시 캔버스 크기 설정
+        baseImage.onload = function() {
+            canvas.width = baseImage.width;
+            canvas.height = baseImage.height;
+            console.log('1.png 로드 완료, 캔버스 크기:', canvas.width, 'x', canvas.height);
+        };
+        
+        // 하트 카운터 업데이트 함수
+        function updateHeartCount() {
+            heartCount++;
+            heartCountElement.textContent = heartCount.toLocaleString();
+            
+            // 펄스 애니메이션 추가
+            heartCounterContainer.classList.remove('pulse');
+            void heartCounterContainer.offsetWidth;
+            heartCounterContainer.classList.add('pulse');
+            
+            setTimeout(() => {
+                heartCounterContainer.classList.remove('pulse');
+            }, 300);
+        }
         
         // WebSocket URL 자동 감지
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -110,124 +230,71 @@
             console.log(`현재 관람객: ${count}명`);
         }
         
-        // 카메라 시작
-        async function startCamera() {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    }, 
-                    audio: false 
-                });
-                
-                video.srcObject = stream;
-                console.log('카메라 시작됨');
-                
-                // 서버에 카메라 시작 알림
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        type: 'camera_status',
-                        status: 'started'
-                    }));
-                }
-            } catch (error) {
-                console.error('카메라 접근 오류:', error);
-                alert('카메라 접근 실패: ' + error.message);
+        // 2.png의 랜덤 픽셀 하나를 드러내기
+        function revealPixel() {
+            if (!imageLoaded) {
+                console.log('2.png가 아직 로드되지 않았습니다.');
+                return;
             }
-        }
-        
-        // 모자이크 스퀘어 생성 (그리드에 맞춰 작은 검정 픽셀)
-        function createMosaicSquare() {
-            const videoContainer = document.querySelector('.video-container');
-            const containerRect = videoContainer.getBoundingClientRect();
             
-            // 고정 픽셀 크기
-            const size = 10; // 3px 검정 픽셀
+            const pixelSize = 10; // 10x10 픽셀 블록
+            const cols = Math.floor(canvas.width / pixelSize);
+            const rows = Math.floor(canvas.height / pixelSize);
+            const totalPixels = cols * rows;
             
-            // 그리드 간격 (10px 단위로 그리드 생성)
-            const gridSize = 10;
+            // 모든 픽셀이 드러났는지 확인
+            if (revealedPixels.size >= totalPixels) {
+                console.log('모든 픽셀이 이미 드러났습니다!');
+                return;
+            }
             
-            // 그리드에 맞춰서 랜덤 위치 선택
-            const gridColumnsCount = Math.floor(containerRect.width / gridSize);
-            const gridRowsCount = Math.floor(containerRect.height / gridSize);
+            // 아직 드러나지 않은 랜덤 위치 찾기
+            let x, y, key;
+            do {
+                x = Math.floor(Math.random() * cols);
+                y = Math.floor(Math.random() * rows);
+                key = `${x},${y}`;
+            } while (revealedPixels.has(key));
             
-            const gridX = Math.floor(Math.random() * gridColumnsCount) * gridSize;
-            const gridY = Math.floor(Math.random() * gridRowsCount) * gridSize;
+            // 픽셀 위치 기록
+            revealedPixels.add(key);
             
-            // 완전 검정색 (불투명도 없음)
-            const color = 'rgb(0, 0, 0)';
+            // 2.png의 해당 부분을 캔버스에 그리기
+            const sourceX = x * pixelSize;
+            const sourceY = y * pixelSize;
             
-            // 스퀘어 엘리먼트 생성
-            const square = document.createElement('div');
-            square.className = 'mosaic-square';
-            square.style.width = size + 'px';
-            square.style.height = size + 'px';
-            square.style.left = gridX + 'px';
-            square.style.top = gridY + 'px';
-            square.style.background = color;
+            ctx.drawImage(
+                secondImage,
+                sourceX, sourceY, pixelSize, pixelSize,  // 소스 이미지 영역
+                sourceX, sourceY, pixelSize, pixelSize   // 캔버스에 그릴 위치와 크기
+            );
             
-            // 비디오 컨테이너에 추가
-            videoContainer.appendChild(square);
-            mosaicSquares.push(square);
-            
-            console.log(`검정 픽셀 생성! 위치: (${gridX}, ${gridY}) / 총 ${mosaicSquares.length}개`);
-        }
-        
-        // 모든 모자이크 스퀘어 제거
-        function clearAllMosaicSquares() {
-            mosaicSquares.forEach(square => {
-                square.style.animation = 'fadeIn 0.3s ease-out reverse';
-                setTimeout(() => {
-                    if (square.parentNode) {
-                        square.parentNode.removeChild(square);
-                    }
-                }, 300);
-            });
-            
-            mosaicSquares = [];
-            console.log('모든 모자이크 스퀘어 제거됨');
-        }
-        
-        // 여러 개의 모자이크 스퀘어 연속 생성
-        function createMultipleMosaicSquares(count) {
-            let created = 0;
-            const interval = setInterval(() => {
-                if (created < count) {
-                    createMosaicSquare();
-                    created++;
-                } else {
-                    clearInterval(interval);
-                }
-            }, 200);
+            console.log(`픽셀 드러남! 위치: (${x}, ${y}) / 총 ${revealedPixels.size}/${totalPixels}개`);
         }
         
         // 버튼 클릭 처리
         function handleButtonClick(buttonName) {
             switch(buttonName) {
                 case 'button1':
-                    createMosaicSquare();
+                    revealPixel(); // 2.png의 픽셀 하나 드러내기
+                    updateHeartCount(); // 하트 카운터 증가
                     break;
                 case 'button2':
-                    createMultipleMosaicSquares(5);
+                    // 추가 기능이 필요하면 여기에 구현
                     break;
                 case 'button3':
-                    clearAllMosaicSquares();
+                    // 추가 기능이 필요하면 여기에 구현
                     break;
             }
         }
         
-        // 페이지 로드 시 WebSocket 연결 및 카메라 자동 시작
+        // 페이지 로드 시 WebSocket 연결
         window.addEventListener('load', function() {
             connectWebSocket();
-            startCamera();
         });
         
         // 페이지 언로드 시 정리
         window.addEventListener('beforeunload', function() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
             if (ws) {
                 ws.close();
             }
