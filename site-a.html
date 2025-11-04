@@ -26,19 +26,20 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
         
         .image-wrapper {
             position: relative;
-            max-width: 100%;
-            max-height: 100%;
+            width: 100vw;
+            height: 100vh;
         }
         
         #baseImage {
             display: block;
-            max-width: 100vw;
-            max-height: 100vh;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 1920x1080 비율로 크롭 */
         }
         
         #pixelCanvas {
@@ -94,30 +95,6 @@
             }
         }
         
-        /* 섬광 효과 */
-        .flash-effect {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 50;
-            animation: flashAnimation 0.3s ease-out;
-        }
-        
-        @keyframes flashAnimation {
-            0% {
-                opacity: 0;
-            }
-            50% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 0;
-            }
-        }
         
         /* 하트 카운터 스타일 */
         .heart-counter {
@@ -215,10 +192,17 @@
         
         // 1.png 로드 완료 시 캔버스 크기 설정
         baseImage.onload = function() {
-            canvas.width = baseImage.width;
-            canvas.height = baseImage.height;
+            // 화면 크기에 맞춰 캔버스 크기 설정
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
             console.log('1.png 로드 완료, 캔버스 크기:', canvas.width, 'x', canvas.height);
         };
+        
+        // 창 크기 변경 시 캔버스 크기도 조정
+        window.addEventListener('resize', function() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
         
         // 하트 카운터 업데이트 함수
         function updateHeartCount() {
@@ -284,17 +268,6 @@
             console.log(`현재 관람객: ${count}명`);
         }
         
-        // 섬광 효과 생성
-        function createFlashEffect() {
-            const flash = document.createElement('div');
-            flash.className = 'flash-effect';
-            document.body.appendChild(flash);
-            
-            setTimeout(() => {
-                flash.remove();
-            }, 300);
-        }
-        
         // 픽셀 하이라이트 효과 생성
         function createPixelHighlight(x, y, size) {
             const highlight = document.createElement('div');
@@ -354,7 +327,6 @@
             );
             
             // 시각적 효과 추가
-            createFlashEffect();
             createPixelHighlight(sourceX, sourceY, pixelSize);
             
             console.log(`픽셀 드러남! 위치: (${x}, ${y}) / 총 ${revealedPixels.size}/${totalPixels}개`);
