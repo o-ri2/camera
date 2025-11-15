@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>사이트 B - 관람객</title>
+    <title>interest</title>
     <style>
         * {
             margin: 0;
@@ -83,7 +83,7 @@
             }
         }
         
-        // 낮은 비프음 재생
+        // 날카로운 경고음 재생
         function playBeep() {
             initAudio();
             
@@ -93,16 +93,16 @@
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
-            // 낮은 주파수 (200Hz)
-            oscillator.frequency.value = 200;
-            oscillator.type = 'sine';
+            // 높은 주파수 (900Hz) - 경고음처럼 날카롭게
+            oscillator.frequency.value = 900;
+            oscillator.type = 'square'; // 사각파로 더 날카로운 소리
             
             // 볼륨 설정 (페이드 아웃)
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
             
             oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
+            oscillator.stop(audioContext.currentTime + 0.15);
         }
         
         // 버튼 애니메이션 재생
