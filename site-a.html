@@ -44,7 +44,7 @@
             display: block;
             width: 1920px;
             height: 1080px;
-            object-fit: cover; /* 1920x1080 영역을 완전히 채우도록 */
+            object-fit: fill; /* 1920x1080으로 정확히 맞춤 (비율 무시) */
         }
         
         #pixelCanvas {
@@ -150,13 +150,27 @@
         let secondImage = new Image();
         let imageLoaded = false;
         let revealedPixels = new Set(); // 이미 드러난 픽셀 위치 저장 (원본 이미지 좌표 기준: "x,y")
+        let imageScale = 1; // 이미지 스케일 비율
+        let imageOffsetX = 0; // 이미지 오프셋 X
+        let imageOffsetY = 0; // 이미지 오프셋 Y
         
-        // 1920x1080 고정이므로 스케일 계산 불필요
+        // 1.png의 실제 표시 영역 계산 (1920x1080 고정, 1:1 매핑)
+        function calculateImageTransform() {
+            if (!baseImage.complete || baseImage.naturalWidth === 0) return;
+            
+            // 두 이미지 모두 1920x1080으로 가정하고 1:1 매핑
+            imageScale = 1;
+            imageOffsetX = 0;
+            imageOffsetY = 0;
+            
+            console.log('이미지 변환 계산: 1920x1080 고정, 1:1 매핑');
+        }
         
         // 2.png 로드
         secondImage.src = 'image/2.png';
         secondImage.onload = function() {
             imageLoaded = true;
+            calculateImageTransform();
             // 기존에 드러난 픽셀들 다시 그리기
             redrawCanvas();
             console.log('2.png 로드 완료');
@@ -170,6 +184,14 @@
             
             // 캔버스 렌더링 품질 설정
             ctx.imageSmoothingEnabled = false; // 픽셀 아트 스타일 유지
+            
+            // 이미지 변환 계산
+            calculateImageTransform();
+            
+            // 2.png가 이미 로드되어 있으면 다시 그리기
+            if (imageLoaded) {
+                redrawCanvas();
+            }
             
             console.log('1.png 로드 완료, 캔버스 크기: 1920x1080');
         };
@@ -242,26 +264,35 @@
         function redrawCanvas() {
             if (!imageLoaded) return;
             
+            calculateImageTransform();
+            
             // 캔버스 초기화
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 모든 드러난 픽셀 다시 그리기
+            // 모든 드러난 픽셀 다시 그리기 (1:1 매핑)
             const pixelSize = 10;
             
             // 렌더링 품질 설정
             ctx.imageSmoothingEnabled = false;
             
+            // 2.png의 크기에 맞춰서 스케일 계산
+            const scaleX = secondImage.width / 1920;
+            const scaleY = secondImage.height / 1080;
+            
             revealedPixels.forEach(key => {
                 const [x, y] = key.split(',').map(Number);
-                const sourceX = x * pixelSize;
-                const sourceY = y * pixelSize;
                 const destX = x * pixelSize;
                 const destY = y * pixelSize;
                 
+                // 2.png의 원본 크기에 맞춰서 소스 영역 계산
+                const actualSourceX = destX * scaleX;
+                const actualSourceY = destY * scaleY;
+                const actualSourceSize = pixelSize * Math.max(scaleX, scaleY);
+                
                 ctx.drawImage(
                     secondImage,
-                    sourceX, sourceY, pixelSize, pixelSize,  // 소스 이미지 영역 (원본 크기)
-                    destX, destY, pixelSize, pixelSize  // 캔버스에 그릴 위치와 크기 (1920x1080 고정)
+                    actualSourceX, actualSourceY, actualSourceSize, actualSourceSize,  // 소스 이미지 영역 (원본 크기 기준)
+                    destX, destY, pixelSize, pixelSize  // 캔버스에 그릴 위치와 크기 (1920x1080 고정, 1:1 매핑)
                 );
             });
         }
@@ -273,7 +304,11 @@
                 return false;
             }
             
-            const pixelSize = 10; // 원본 이미지 기준 10x10 픽셀 블록
+            calculateImageTransform();
+            
+            const pixelSize = 10; // 10x10 픽셀 블록
+            
+            // 1920x1080 영역 내의 그리드 계산 (1:1 매핑)
             const cols = Math.floor(1920 / pixelSize); // 192
             const rows = Math.floor(1080 / pixelSize); // 108
             const totalPixels = cols * rows;
@@ -301,7 +336,7 @@
             // 픽셀 위치 기록
             revealedPixels.add(key);
             
-            // 2.png의 해당 부분을 캔버스에 그리기
+            // 2.png의 해당 부분을 캔버스에 그리기 (1:1 매핑)
             const sourceX = x * pixelSize;
             const sourceY = y * pixelSize;
             const destX = x * pixelSize;
@@ -324,7 +359,18 @@
                 
                 // globalAlpha로 페이드인 효과
                 ctx.globalAlpha = opacity;
-                ctx.drawImage(secondImage, sourceX, sourceY, pixelSize, pixelSize, destX, destY, pixelSize, pixelSize);
+                // 2.png의 크기에 맞춰서 소스 영역 계산
+                const scaleX = secondImage.width / 1920;
+                const scaleY = secondImage.height / 1080;
+                const actualSourceX = sourceX * scaleX;
+                const actualSourceY = sourceY * scaleY;
+                const actualSourceSize = pixelSize * Math.max(scaleX, scaleY);
+                
+                ctx.drawImage(
+                    secondImage, 
+                    actualSourceX, actualSourceY, actualSourceSize, actualSourceSize, 
+                    destX, destY, pixelSize, pixelSize
+                );
                 ctx.globalAlpha = 1.0; // 원래대로 복원
                 
                 if (opacity < 1) {
