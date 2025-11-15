@@ -14,14 +14,19 @@
         body {
             background: #000;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
         }
         
         .image-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            max-width: 100vw;
+            max-height: 100vh;
             background: #000;
             display: flex;
             align-items: center;
@@ -31,115 +36,77 @@
         
         .image-wrapper {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 1920px;
+            height: 1080px;
         }
         
         #baseImage {
             display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* 1920x1080 비율로 크롭 */
+            width: 1920px;
+            height: 1080px;
+            object-fit: contain;
         }
         
         #pixelCanvas {
             position: absolute;
             top: 0;
             left: 0;
+            width: 1920px;
+            height: 1080px;
             pointer-events: none;
         }
         
-        .pixel {
+        /* 페이드인 효과를 위한 캔버스 오버레이 */
+        .pixel-fade {
             position: absolute;
-            animation: fadeIn 0.3s ease-in;
             pointer-events: none;
+            animation: pixelFadeIn 0.3s ease-in forwards;
         }
         
-        @keyframes fadeIn {
+        @keyframes pixelFadeIn {
             from {
                 opacity: 0;
-                transform: scale(0);
             }
             to {
                 opacity: 1;
-                transform: scale(1);
-            }
-        }
-        
-        /* 픽셀 하이라이트 효과 */
-        .pixel-highlight {
-            position: absolute;
-            pointer-events: none;
-            z-index: 100;
-            animation: highlightPulse 1s ease-out forwards;
-        }
-        
-        @keyframes highlightPulse {
-            0% {
-                box-shadow: 0 0 20px 5px rgba(255, 255, 255, 1),
-                            0 0 40px 10px rgba(255, 59, 92, 0.8);
-                transform: scale(1.5);
-                opacity: 1;
-            }
-            50% {
-                box-shadow: 0 0 30px 10px rgba(255, 255, 255, 0.8),
-                            0 0 60px 20px rgba(255, 59, 92, 0.6);
-                transform: scale(2);
-                opacity: 0.8;
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0),
-                            0 0 0 0 rgba(255, 59, 92, 0);
-                transform: scale(2.5);
-                opacity: 0;
             }
         }
         
         
-        /* 하트 카운터 스타일 */
+        /* 하트 카운터 스타일 - 인스타그램 스타일 */
         .heart-counter {
             position: fixed;
-            bottom: 30px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            padding: 12px 24px;
-            border-radius: 50px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            padding: 6px 12px;
+            border-radius: 20px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            gap: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             z-index: 1000;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
         
         .heart-icon {
-            font-size: 24px;
-            color: #ff3b5c;
-            animation: heartBeat 1s ease-in-out infinite;
+            font-size: 16px;
+            color: #ff3040;
+            line-height: 1;
         }
         
         .heart-count {
-            font-size: 18px;
-            font-weight: 600;
-            color: white;
-            min-width: 30px;
-            text-align: center;
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.95);
+            letter-spacing: 0.3px;
         }
         
-        @keyframes heartBeat {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.1);
-            }
-        }
-        
-        /* 카운터 증가 애니메이션 */
+        /* 카운터 증가 애니메이션 - 미묘하게 */
         .heart-counter.pulse {
-            animation: counterPulse 0.3s ease-out;
+            animation: counterPulse 0.2s ease-out;
         }
         
         @keyframes counterPulse {
@@ -147,12 +114,13 @@
                 transform: translateX(-50%) scale(1);
             }
             50% {
-                transform: translateX(-50%) scale(1.15);
+                transform: translateX(-50%) scale(1.05);
             }
             100% {
                 transform: translateX(-50%) scale(1);
             }
         }
+        
     </style>
 </head>
 <body>
@@ -181,32 +149,34 @@
         
         let secondImage = new Image();
         let imageLoaded = false;
-        let revealedPixels = new Set(); // 이미 드러난 픽셀 위치 저장
+        let revealedPixels = new Set(); // 이미 드러난 픽셀 위치 저장 (원본 이미지 좌표 기준: "x,y")
+        
+        // 1920x1080 고정이므로 스케일 계산 불필요
         
         // 2.png 로드
         secondImage.src = 'image/2.png';
         secondImage.onload = function() {
             imageLoaded = true;
+            // 기존에 드러난 픽셀들 다시 그리기
+            redrawCanvas();
             console.log('2.png 로드 완료');
         };
         
         // 1.png 로드 완료 시 캔버스 크기 설정
         baseImage.onload = function() {
-            // 화면 크기에 맞춰 캔버스 크기 설정
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            console.log('1.png 로드 완료, 캔버스 크기:', canvas.width, 'x', canvas.height);
+            // 1920x1080 고정 크기
+            canvas.width = 1920;
+            canvas.height = 1080;
+            
+            // 캔버스 렌더링 품질 설정
+            ctx.imageSmoothingEnabled = false; // 픽셀 아트 스타일 유지
+            
+            console.log('1.png 로드 완료, 캔버스 크기: 1920x1080');
         };
         
-        // 창 크기 변경 시 캔버스 크기도 조정
-        window.addEventListener('resize', function() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-        
         // 하트 카운터 업데이트 함수
-        function updateHeartCount() {
-            heartCount++;
+        function updateHeartCount(count = 1) {
+            heartCount += count;
             heartCountElement.textContent = heartCount.toLocaleString();
             
             // 펄스 애니메이션 추가
@@ -216,7 +186,7 @@
             
             setTimeout(() => {
                 heartCounterContainer.classList.remove('pulse');
-            }, 300);
+            }, 200);
         }
         
         // WebSocket URL 자동 감지
@@ -268,49 +238,64 @@
             console.log(`현재 관람객: ${count}명`);
         }
         
-        // 픽셀 하이라이트 효과 생성
-        function createPixelHighlight(x, y, size) {
-            const highlight = document.createElement('div');
-            highlight.className = 'pixel-highlight';
-            highlight.style.left = x + 'px';
-            highlight.style.top = y + 'px';
-            highlight.style.width = size + 'px';
-            highlight.style.height = size + 'px';
-            highlight.style.border = '2px solid rgba(255, 255, 255, 0.8)';
-            highlight.style.borderRadius = '50%';
+        // 캔버스 다시 그리기 함수
+        function redrawCanvas() {
+            if (!imageLoaded) return;
             
-            const imageWrapper = document.querySelector('.image-wrapper');
-            imageWrapper.appendChild(highlight);
+            // 캔버스 초기화
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            setTimeout(() => {
-                highlight.remove();
-            }, 1000);
+            // 모든 드러난 픽셀 다시 그리기
+            const pixelSize = 10;
+            
+            // 렌더링 품질 설정
+            ctx.imageSmoothingEnabled = false;
+            
+            revealedPixels.forEach(key => {
+                const [x, y] = key.split(',').map(Number);
+                const sourceX = x * pixelSize;
+                const sourceY = y * pixelSize;
+                const destX = x * pixelSize;
+                const destY = y * pixelSize;
+                
+                ctx.drawImage(
+                    secondImage,
+                    sourceX, sourceY, pixelSize, pixelSize,  // 소스 이미지 영역 (원본 크기)
+                    destX, destY, pixelSize, pixelSize  // 캔버스에 그릴 위치와 크기 (1920x1080 고정)
+                );
+            });
         }
         
-        // 2.png의 랜덤 픽셀 하나를 드러내기
+        // 2.png의 랜덤 픽셀 하나를 드러내기 (페이드인 효과 포함)
         function revealPixel() {
             if (!imageLoaded) {
                 console.log('2.png가 아직 로드되지 않았습니다.');
-                return;
+                return false;
             }
             
-            const pixelSize = 10; // 10x10 픽셀 블록
-            const cols = Math.floor(canvas.width / pixelSize);
-            const rows = Math.floor(canvas.height / pixelSize);
+            const pixelSize = 10; // 원본 이미지 기준 10x10 픽셀 블록
+            const cols = Math.floor(1920 / pixelSize); // 192
+            const rows = Math.floor(1080 / pixelSize); // 108
             const totalPixels = cols * rows;
             
             // 모든 픽셀이 드러났는지 확인
             if (revealedPixels.size >= totalPixels) {
                 console.log('모든 픽셀이 이미 드러났습니다!');
-                return;
+                return false;
             }
             
             // 아직 드러나지 않은 랜덤 위치 찾기
             let x, y, key;
+            let attempts = 0;
             do {
                 x = Math.floor(Math.random() * cols);
                 y = Math.floor(Math.random() * rows);
                 key = `${x},${y}`;
+                attempts++;
+                if (attempts > 1000) {
+                    console.log('픽셀 선택 실패 - 너무 많은 시도');
+                    return false;
+                }
             } while (revealedPixels.has(key));
             
             // 픽셀 위치 기록
@@ -319,17 +304,37 @@
             // 2.png의 해당 부분을 캔버스에 그리기
             const sourceX = x * pixelSize;
             const sourceY = y * pixelSize;
+            const destX = x * pixelSize;
+            const destY = y * pixelSize;
             
-            ctx.drawImage(
-                secondImage,
-                sourceX, sourceY, pixelSize, pixelSize,  // 소스 이미지 영역
-                sourceX, sourceY, pixelSize, pixelSize   // 캔버스에 그릴 위치와 크기
-            );
+            // 렌더링 품질 설정
+            ctx.imageSmoothingEnabled = false;
             
-            // 시각적 효과 추가
-            createPixelHighlight(sourceX, sourceY, pixelSize);
+            // 페이드인 애니메이션 적용
+            let opacity = 0;
+            const fadeDuration = 300; // 300ms
+            const startTime = performance.now();
             
-            console.log(`픽셀 드러남! 위치: (${x}, ${y}) / 총 ${revealedPixels.size}/${totalPixels}개`);
+            function animateFade() {
+                const elapsed = performance.now() - startTime;
+                opacity = Math.min(elapsed / fadeDuration, 1);
+                
+                // 기존 영역 지우기
+                ctx.clearRect(destX, destY, pixelSize, pixelSize);
+                
+                // globalAlpha로 페이드인 효과
+                ctx.globalAlpha = opacity;
+                ctx.drawImage(secondImage, sourceX, sourceY, pixelSize, pixelSize, destX, destY, pixelSize, pixelSize);
+                ctx.globalAlpha = 1.0; // 원래대로 복원
+                
+                if (opacity < 1) {
+                    requestAnimationFrame(animateFade);
+                }
+            }
+            
+            animateFade();
+            
+            return true;
         }
         
         // 버튼 클릭 처리
@@ -337,7 +342,7 @@
             switch(buttonName) {
                 case 'button1':
                     revealPixel(); // 2.png의 픽셀 하나 드러내기
-                    updateHeartCount(); // 하트 카운터 증가
+                    updateHeartCount(1); // 하트 카운터 증가
                     break;
                 case 'button2':
                     // 추가 기능이 필요하면 여기에 구현
@@ -350,6 +355,10 @@
         
         // 페이지 로드 시 WebSocket 연결
         window.addEventListener('load', function() {
+            // 이미지가 이미 로드되어 있을 경우를 대비
+            if (imageLoaded) {
+                redrawCanvas();
+            }
             connectWebSocket();
         });
         
