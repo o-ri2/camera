@@ -59,7 +59,7 @@
         const ctx = canvas.getContext('2d');
 
         // 자동 복원 기본 설정
-        const AUTO_RESET_TIME = 10; // 기본 10초
+        const AUTO_RESET_TIME = 5; // 기본 5초
         const AUTO_RESET_ENABLED = true; // 기본 활성화
 
         let originalImage = null;
@@ -67,10 +67,11 @@
         let quality = 100;
         let scaleFactor = 1.0;
         let degradationCount = 0;
-        const MAX_DEGRADATION_STEPS = 500; // 최대 500단계
+        const MAX_DEGRADATION_STEPS = 1000; // 최대 1000단계
         let autoResetTimer = null;
         let autoResetInterval = null;
         let remainingTime = 0;
+        let renderRequestId = null; // requestAnimationFrame ID
         
         // WebSocket 연결
         let ws = null;
@@ -125,8 +126,24 @@
             img.src = url;
         }
 
-        // 이미지 그리기
+        // 이미지 그리기 (최적화된 버전)
         function drawImage() {
+            if (!currentImage) return;
+            
+            // 이미 렌더링 요청이 있으면 취소하고 새로 예약
+            if (renderRequestId !== null) {
+                cancelAnimationFrame(renderRequestId);
+            }
+            
+            // 다음 프레임에 렌더링하도록 예약
+            renderRequestId = requestAnimationFrame(() => {
+                renderRequestId = null;
+                drawImageSync();
+            });
+        }
+        
+        // 실제 이미지 그리기 함수 (동기)
+        function drawImageSync() {
             if (!currentImage) return;
             
             // 임시 캔버스에 저해상도로 그리기
@@ -231,7 +248,6 @@
             }
             
             if (degradationCount >= MAX_DEGRADATION_STEPS) {
-                alert(`최대 화질 저하 단계(${MAX_DEGRADATION_STEPS}단계)에 도달했습니다.`);
                 return;
             }
             
@@ -243,14 +259,14 @@
             degradationCount++;
             
             // 지수적 감소 곡선을 사용하여 매우 세밀한 단계별 감소
-            // 500단계에 걸쳐 1.0에서 0.01까지 부드럽게 감소
+            // 1000단계에 걸쳐 1.0에서 0.01까지 부드럽게 감소
             // 공식: scaleFactor = e^(-k * degradationCount)
             // k 값을 조정하여 원하는 감소 속도 설정
-            const k = 0.009; // 500단계에 맞게 조정
+            const k = 0.0046; // 1000단계에 맞게 조정
             scaleFactor = Math.max(0.01, Math.exp(-k * degradationCount));
             
-            // 품질 계산 (100%에서 1%까지, 500단계에 맞게 조정)
-            quality = Math.max(1, 100 - (degradationCount * 0.198));
+            // 품질 계산 (100%에서 1%까지, 1000단계에 맞게 조정)
+            quality = Math.max(1, 100 - (degradationCount * 0.099));
             
             // 자동 복원이 활성화되어 있으면 타이머 시작/리셋
             if (AUTO_RESET_ENABLED) {
@@ -258,6 +274,7 @@
             }
             
             updateInfo();
+            // drawImage는 requestAnimationFrame으로 최적화됨
             drawImage();
         }
 
@@ -288,11 +305,11 @@
             degradationCount--;
             
             // 지수적 감소 곡선을 역으로 계산하여 복구
-            const k = 0.009;
+            const k = 0.0046;
             scaleFactor = Math.max(0.01, Math.exp(-k * degradationCount));
             
             // 품질 계산
-            quality = Math.max(1, 100 - (degradationCount * 0.198));
+            quality = Math.max(1, 100 - (degradationCount * 0.099));
             
             updateInfo();
             drawImage();
